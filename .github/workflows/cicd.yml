@@ -1,0 +1,63 @@
+name: DevSecOps CI/CD Pipeline
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------
+      # 1. Checkout Code
+      # -----------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------
+      # 2. Setup Node
+      # -----------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # -----------------------
+      # 3. Install dependencies
+      # -----------------------
+      - name: Install dependencies
+        run: npm install
+
+      # -----------------------
+      # 4. Run tests
+      # -----------------------
+      - name: Run tests
+        run: npm test
+
+      # -----------------------
+      # 5. Security scan (Snyk)
+      # -----------------------
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      # -----------------------
+      # 6. Install Vercel CLI
+      # -----------------------
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      # -----------------------
+      # 7. Build project
+      # -----------------------
+      - name: Build project
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      # -----------------------
+      # 8. Deploy to Vercel (CD)
+      # -----------------------
+      - name: Deploy to Vercel
+        run: vercel deploy --prod --confirm --token=${{ secrets.VERCEL_TOKEN }}

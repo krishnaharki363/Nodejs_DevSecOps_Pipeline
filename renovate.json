@@ -1,0 +1,19 @@
+{
+  "extends": ["config:recommended"],
+
+  "timezone": "Asia/Kathmandu",
+
+  "dependencyDashboard": false,
+
+  "platformAutomerge": true,
+
+  "automergeStrategy": "squash",
+
+  "packageRules": [
+    {
+      "matchPackagePatterns": ["*"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "automerge": true
+    }
+  ]
+}
