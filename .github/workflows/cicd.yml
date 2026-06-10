@@ -1,63 +1,122 @@
-name: DevSecOps CI/CD Pipeline
+name: CI / CD Pipeline
 
 on:
-  pull_request:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  pipeline:
+  # ─────────────────────────────────────────
+  # JOB 1: Lint & Test
+  # ─────────────────────────────────────────
+  test:
+    name: 🧪 Test
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
     steps:
-      # -----------------------
-      # 1. Checkout Code
-      # -----------------------
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # -----------------------
-      # 2. Setup Node
-      # -----------------------
-      - name: Setup Node.js
+      - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
 
-      # -----------------------
-      # 3. Install dependencies
-      # -----------------------
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      # -----------------------
-      # 4. Run tests
-      # -----------------------
-      - name: Run tests
-        run: npm test
+      - name: Run tests with coverage
+        run: npm run test:ci
 
-      # -----------------------
-      # 5. Security scan (Snyk)
-      # -----------------------
-      - name: Run Snyk security scan
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.node-version }}
+          path: junit.xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-${{ matrix.node-version }}
+          path: coverage/
+
+  # ─────────────────────────────────────────
+  # JOB 2: Snyk Security Scan
+  # ─────────────────────────────────────────
+  snyk:
+    name: 🔐 Snyk Security Scan
+    runs-on: ubuntu-latest
+    needs: test
+
+    permissions:
+      security-events: write   # needed to upload SARIF to GitHub Security tab
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/node@master
+        continue-on-error: false          # fail the PR if HIGH/CRITICAL vulns found
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --sarif-file-output=snyk.sarif
 
-      # -----------------------
-      # 6. Install Vercel CLI
-      # -----------------------
-      - name: Install Vercel CLI
-        run: npm install -g vercel
+      - name: Upload Snyk SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk.sarif
 
-      # -----------------------
-      # 7. Build project
-      # -----------------------
-      - name: Build project
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+  # ─────────────────────────────────────────
+  # JOB 3: Deploy to Vercel (main branch only)
+  # ─────────────────────────────────────────
+  deploy:
+    name: 🚀 Deploy to Vercel
+    runs-on: ubuntu-latest
+    needs: [test, snyk]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
-      # -----------------------
-      # 8. Deploy to Vercel (CD)
-      # -----------------------
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Deploy to Vercel
-        run: vercel deploy --prod --confirm --token=${{ secrets.VERCEL_TOKEN }}
+        id: deploy
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: "--prod"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Print deployment URL
+        run: echo "✅ Deployed to ${{ steps.deploy.outputs.preview-url }}"

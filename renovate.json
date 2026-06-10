@@ -1,19 +1,83 @@
 {
-  "extends": ["config:recommended"],
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
 
-  "timezone": "Asia/Kathmandu",
+  "description": "Renovate config: auto-detect updates, open PRs, auto-merge when CI is green",
 
-  "dependencyDashboard": false,
+  "extends": [
+    "config:base",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":separatePatchReleases"
+  ],
 
+  
+  "labels": ["dependencies", "renovate"],
+
+  
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+
+  
+  "automerge": true,
+  "automergeType": "pr",          
+  "automergeStrategy": "squash",  
+
+  
   "platformAutomerge": true,
 
-  "automergeStrategy": "squash",
+  
+  "schedule": ["after 6am and before 10am", "after 6pm and before 10pm"],
+  "timezone": "Asia/Kathmandu",
 
+ 
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+
+  
   "packageRules": [
     {
-      "matchPackagePatterns": ["*"],
-      "matchUpdateTypes": ["major", "minor", "patch"],
+      "description": "Group all non-major devDependency updates into one PR",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "devDependencies (non-major)",
       "automerge": true
+    },
+    {
+      "description": "Auto-merge patch updates for production deps immediately",
+      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeSchedule": ["at any time"]
+    },
+    {
+      "description": "Minor production dep updates — still auto-merge but wait for CI",
+      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": ["minor"],
+      "automerge": true
+    },
+    {
+      "description": "Major updates need a human eye — disable auto-merge",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["dependencies", "renovate", "major-update"]
+    },
+    {
+      "description": "Pin GitHub Actions to exact SHAs for supply-chain security",
+      "matchManagers": ["github-actions"],
+      "pinDigests": true,
+      "automerge": true,
+      "groupName": "GitHub Actions"
     }
-  ]
+  ],
+
+  
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security", "vulnerability"],
+    "automerge": true,           
+    "schedule": ["at any time"]  
+  },
+
+  
+  "ignorePaths": ["**/node_modules/**", "**/coverage/**"]
 }
