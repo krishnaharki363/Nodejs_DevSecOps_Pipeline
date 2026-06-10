@@ -1,8 +1,8 @@
 {
   "name": "devsecops-demo",
-  "version": "4.0.0",
+  "version": "1.0.0",
   "description": "Node.js app with a full DevSecOps CI/CD pipeline",
-  "main": "src/index.js",
+  "main": "api/index.js",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
