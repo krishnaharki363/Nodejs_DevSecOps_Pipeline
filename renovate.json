@@ -1,39 +1,22 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-
-  "description": "Renovate config: auto-detect updates, open PRs, auto-merge when CI is green",
-
   "extends": [
     "config:base",
     ":dependencyDashboard",
     ":semanticCommits",
     ":separatePatchReleases"
   ],
-
-  
   "labels": ["dependencies", "renovate"],
-
-  
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
-
-  
   "automerge": true,
-  "automergeType": "pr",          
-  "automergeStrategy": "squash",  
-
-  
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
   "platformAutomerge": true,
-
-  
   "schedule": ["after 6am and before 10am", "after 6pm and before 10pm"],
   "timezone": "Asia/Kathmandu",
-
- 
   "semanticCommitType": "chore",
   "semanticCommitScope": "deps",
-
-  
   "packageRules": [
     {
       "description": "Group all non-major devDependency updates into one PR",
@@ -50,34 +33,30 @@
       "automergeSchedule": ["at any time"]
     },
     {
-      "description": "Minor production dep updates — still auto-merge but wait for CI",
+      "description": "Auto-merge minor production dep updates after CI passes",
       "matchDepTypes": ["dependencies"],
       "matchUpdateTypes": ["minor"],
       "automerge": true
     },
     {
-      "description": "Major updates need a human eye — disable auto-merge",
+      "description": "Major updates require manual review",
       "matchUpdateTypes": ["major"],
       "automerge": false,
       "labels": ["dependencies", "renovate", "major-update"]
     },
     {
-      "description": "Pin GitHub Actions to exact SHAs for supply-chain security",
+      "description": "Pin GitHub Actions to exact SHAs",
       "matchManagers": ["github-actions"],
       "pinDigests": true,
       "automerge": true,
       "groupName": "GitHub Actions"
     }
   ],
-
-  
   "vulnerabilityAlerts": {
     "enabled": true,
     "labels": ["security", "vulnerability"],
-    "automerge": true,           
-    "schedule": ["at any time"]  
+    "automerge": true,
+    "schedule": ["at any time"]
   },
-
-  
   "ignorePaths": ["**/node_modules/**", "**/coverage/**"]
 }
